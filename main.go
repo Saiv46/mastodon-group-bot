@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
+	"strings"
 
 	"github.com/mattn/go-mastodon"
 )
@@ -18,11 +20,12 @@ func main() {
 
 	// Reading config
 	type Config struct {
-		Server         string `json:"Server"`
-		ClientID       string `json:"ClientID"`
-		ClientSecret   string `json:"ClientSecret"`
-		AccessToken    string `json:"AccessToken"`
-		WelcomeMessage string `json:"WelcomeMessage"`
+		Server         string   `json:"Server"`
+		ClientID       string   `json:"ClientID"`
+		ClientSecret   string   `json:"ClientSecret"`
+		AccessToken    string   `json:"AccessToken"`
+		WelcomeMessage string   `json:"WelcomeMessage"`
+		Admins         []string `json:"Admins"`
 	}
 
 	data, err := os.ReadFile(*ConfPath)
@@ -48,7 +51,6 @@ func main() {
 
 	my_account, _ := c.GetAccountCurrentUser(ctx)
 	followers, _ := c.GetAccountFollowers(ctx, my_account.ID, &mastodon.Pagination{Limit: 60})
-	signed := false
 
 	// Run bot
 	for {
@@ -75,22 +77,42 @@ func main() {
 			postToot(message, "public")
 		}
 
-		// Reblog toot
+		// Read message
 		if notif.Type == "mention" {
-			sender := notif.Status.Account.Acct
+			for i := 0; i < len(followers); i++ { // Follow check
+				if notif.Status.Account.Acct == string(followers[i].Acct) {
+					if notif.Status.Visibility == "public" { // Reblog toot
+						c.Reblog(ctx, notif.Status.ID)
+					} else if notif.Status.Visibility == "direct" { // Admin commands
+						for y := 0; y < len(Conf.Admins); y++ {
+							if notif.Status.Account.Acct == Conf.Admins[y] {
+								text := notif.Status.Content
+								recmd := regexp.MustCompile(`<.*?> `)
+								command := recmd.ReplaceAllString(text, "")
+								args := strings.Split(command, " ")
 
-			// Subscription check
-			for i := 0; i < len(followers); i++ {
-				if sender == string(followers[i].Acct) {
-					signed = true
+								if len(args) == 2 {
+									switch args[0] {
+									case "unboost":
+										c.Unreblog(ctx, mastodon.ID((args[1])))
+									case "delete":
+										c.DeleteStatus(ctx, mastodon.ID(args[1]))
+									case "block":
+										c.AccountBlock(ctx, mastodon.ID(args[1]))
+									case "unblock":
+										c.AccountUnblock(ctx, mastodon.ID(args[1]))
+									}
+								}
+							} else {
+								var message = fmt.Sprintf("@%s%s", notif.Account.Acct, ", you are not admin!")
+								postToot(message, "direct")
+							}
+						}
+					}
+				} else {
+					var message = fmt.Sprintf("@%s%s", notif.Account.Acct, ", you are not subscribed!")
+					postToot(message, "direct")
 				}
-			}
-
-			if signed {
-				c.Reblog(ctx, notif.Status.ID)
-			} else {
-				var message = fmt.Sprintf("@%s%s", notif.Account.Acct, ", you are not subscribed!")
-				postToot(message, "direct")
 			}
 		}
 	}
