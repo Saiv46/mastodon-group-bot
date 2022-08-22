@@ -57,7 +57,9 @@ func run_bot(Conf Config) {
 			for i := 0; i < len(followers); i++ { // Follow check
 				if notif.Status.Account.Acct == string(followers[i].Acct) {
 					if notif.Status.Visibility == "public" { // Reblog toot
-						c.Reblog(ctx, notif.Status.ID)
+						if notif.Status.InReplyToID == nil {
+							c.Reblog(ctx, notif.Status.ID)
+						}
 					} else if notif.Status.Visibility == "direct" { // Admin commands
 						for y := 0; y < len(Conf.Admins); y++ {
 							if notif.Status.Account.Acct == Conf.Admins[y] {
