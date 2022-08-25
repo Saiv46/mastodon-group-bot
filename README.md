@@ -1,11 +1,14 @@
 # Mastodon group bot
-
 This is a bot which implements group functionality in Mastodon.
 
+## Features
+* Repost toots
+* Welcome message of new members
+* Limit of toots per hour
+* Admin commands
+
 # Configuration
-
 The bot is configured in a JSON file that looks like this:
-
 ```
 {
     "Server":           "https://example.com",
@@ -20,17 +23,30 @@ The bot is configured in a JSON file that looks like this:
 ```
 
 # Building
-
 ```
 go mod init mastodon-group-bot
-
 go mod tidy
-
 go build
 ```
 
-# Usage
+# Setup services
+For first copy config and binary
+```
+cp mastodon-group-bot /usr/bin/mastodon-group-bot
+cp config.json /etc/mastodon-group-bot.json
+```
 
+## Systemd
+```
+cp ./services/systemd/mastodon-group-bot.service /etc/systemd/system/mastodon-group-bot.service
+```
+
+## OpenRC
+```
+cp ./services/openrc/mastodon-group-bot /etc/init.d/mastodon-group-bot
+```
+
+# Usage
 ```
 Usage of mastodon-group-bot:
   -config string

@@ -1,0 +1,12 @@
+[Unit]
+Description=Mastodon group bot which reposts toots
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nobody
+ExecStart=/usr/bin/mastodon-group-bot -config /etc/mastodon-group-bot.json
+
+[Install]
+WantedBy=multi-user.target
