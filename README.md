@@ -13,6 +13,9 @@ The bot is configured in a JSON file that looks like this:
     "ClientSecret":     "0000000000000000000000000000000000000000000",
     "AccessToken":      "0000000000000000000000000000000000000000000",
     "WelcomeMessage":   "We have a new member in our group. Please love and favor"
+    "Max_toots":        1,
+    "Toots_interval":   24,
+    "Admins":           ["admin@example.com"]
 }
 ```
 

@@ -13,6 +13,8 @@ type Config struct {
 	ClientSecret   string   `json:"ClientSecret"`
 	AccessToken    string   `json:"AccessToken"`
 	WelcomeMessage string   `json:"WelcomeMessage"`
+	Max_toots      uint16   `json:"Max_toots"`
+	Toots_interval uint16   `json:"Toots_interval"`
 	Admins         []string `json:"Admins"`
 }
 

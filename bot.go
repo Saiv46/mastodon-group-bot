@@ -48,36 +48,48 @@ func run_bot(Conf Config) {
 
 		// New follower
 		if notif.Type == "follow" {
-			var message = fmt.Sprintf("%s @%s", Conf.WelcomeMessage, notif.Account.Acct)
-			postToot(message, "public")
+			acct := notif.Account.Acct
+			if !followed(acct) { // Add to db and post welcome message
+				add_to_db(acct, Conf.Max_toots)
+				var message = fmt.Sprintf("%s @%s", Conf.WelcomeMessage, acct)
+				postToot(message, "public")
+			}
 		}
 
 		// Read message
 		if notif.Type == "mention" {
-			for i := 0; i < len(followers); i++ { // Follow check
-				if notif.Status.Account.Acct == string(followers[i].Acct) {
+			acct := notif.Status.Account.Acct
+			for i := 0; i < len(followers); i++ {
+				if acct == string(followers[i].Acct) { // Follow check
 					if notif.Status.Visibility == "public" { // Reblog toot
-						if notif.Status.InReplyToID == nil {
-							c.Reblog(ctx, notif.Status.ID)
+						if notif.Status.InReplyToID == nil { // Not boost replies
+							if !followed(acct) { // Add to db if needed
+								add_to_db(acct, Conf.Max_toots)
+							}
+							if check_ticket(acct, Conf.Max_toots, Conf.Toots_interval) > 0 { // Limit
+								take_ticket(acct)
+								c.Reblog(ctx, notif.Status.ID)
+							}
 						}
 					} else if notif.Status.Visibility == "direct" { // Admin commands
 						for y := 0; y < len(Conf.Admins); y++ {
-							if notif.Status.Account.Acct == Conf.Admins[y] {
+							if acct == Conf.Admins[y] {
 								text := notif.Status.Content
 								recmd := regexp.MustCompile(`<.*?> `)
 								command := recmd.ReplaceAllString(text, "")
 								args := strings.Split(command, " ")
+								mID := mastodon.ID((args[1]))
 
 								if len(args) == 2 {
 									switch args[0] {
 									case "unboost":
-										c.Unreblog(ctx, mastodon.ID((args[1])))
+										c.Unreblog(ctx, mID)
 									case "delete":
-										c.DeleteStatus(ctx, mastodon.ID(args[1]))
+										c.DeleteStatus(ctx, mID)
 									case "block":
-										c.AccountBlock(ctx, mastodon.ID(args[1]))
+										c.AccountBlock(ctx, mID)
 									case "unblock":
-										c.AccountUnblock(ctx, mastodon.ID(args[1]))
+										c.AccountUnblock(ctx, mID)
 									}
 								}
 							} else {
