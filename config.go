@@ -18,8 +18,9 @@ type Config struct {
 	Admins         []string `json:"Admins"`
 }
 
-func read_conf() Config {
+func read_conf() (Config, *string) {
 	ConfPath := flag.String("config", "config.json", "Path to config")
+	DBPath := flag.String("db", "limits.db", "Path to database")
 	flag.Parse()
 
 	data, err := os.ReadFile(*ConfPath)
@@ -30,5 +31,5 @@ func read_conf() Config {
 	var Conf Config
 	json.Unmarshal(data, &Conf)
 
-	return Conf
+	return Conf, DBPath
 }

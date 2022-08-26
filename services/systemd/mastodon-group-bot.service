@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=nobody
-ExecStart=/usr/bin/mastodon-group-bot -config /etc/mastodon-group-bot.json
+ExecStart=/usr/bin/mastodon-group-bot -config /etc/mastodon-group-bot/config.json -db /var/lib/mastodon-group-bot/limits.db
 
 [Install]
 WantedBy=multi-user.target

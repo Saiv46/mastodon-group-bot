@@ -10,8 +10,8 @@ import (
 )
 
 // Init database
-func init_limit_db() *sql.DB {
-	db, err := sql.Open("sqlite3", "limits.db")
+func init_limit_db(DBPath string) *sql.DB {
+	db, err := sql.Open("sqlite3", DBPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -26,8 +26,8 @@ func init_limit_db() *sql.DB {
 }
 
 // Add account to database
-func add_to_db(acct string, limit uint16) {
-	db := init_limit_db()
+func add_to_db(acct string, limit uint16, DBPath string) {
+	db := init_limit_db(DBPath)
 	cmd := `INSERT INTO Limits (acct, ticket) VALUES (?, ?)`
 	stat, err := db.Prepare(cmd)
 	if err != nil {
@@ -37,8 +37,8 @@ func add_to_db(acct string, limit uint16) {
 }
 
 // Take ticket for tooting
-func take_ticket(acct string) {
-	db := init_limit_db()
+func take_ticket(acct string, DBPath string) {
+	db := init_limit_db(DBPath)
 	cmd1 := `SELECT ticket FROM Limits WHERE acct = ?`
 	cmd2 := `UPDATE Limits SET ticket = ?, time = ? WHERE acct = ?`
 
@@ -60,8 +60,8 @@ func take_ticket(acct string) {
 }
 
 // Check followed once
-func followed(acct string) bool {
-	db := init_limit_db()
+func followed(acct string, DBPath string) bool {
+	db := init_limit_db(DBPath)
 	cmd := `SELECT acct FROM Limits WHERE acct = ?`
 	err := db.QueryRow(cmd, acct).Scan(&acct)
 	if err != nil {
@@ -76,8 +76,8 @@ func followed(acct string) bool {
 }
 
 // Check ticket availability
-func check_ticket(acct string, ticket uint16, toots_interval uint16) uint16 {
-	db := init_limit_db()
+func check_ticket(acct string, ticket uint16, toots_interval uint16, DBPath string) uint16 {
+	db := init_limit_db(DBPath)
 	cmd1 := `SELECT ticket FROM Limits WHERE acct = ?`
 	cmd2 := `SELECT time FROM Limits WHERE acct = ?`
 

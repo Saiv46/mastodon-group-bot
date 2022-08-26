@@ -7,6 +7,12 @@ This is a bot which implements group functionality in Mastodon.
 * Limit of toots per hour
 * Admin commands
 
+### Admin commands
+* unboost \<Toot ID>
+* delete  \<Toot ID>
+* block   \<User ID>
+* unblock \<User ID>
+
 # Configuration
 The bot is configured in a JSON file that looks like this:
 ```
@@ -30,10 +36,13 @@ go build
 ```
 
 # Setup services
-For first copy config and binary
+For first copy config, binary and make dirs
 ```
+mkdir /etc/mastodon-group-bot
+mkdir /var/lib/mastodon-group-bot
+chown nobody /var/lib/mastodon-group-bot
 cp mastodon-group-bot /usr/bin/mastodon-group-bot
-cp config.json /etc/mastodon-group-bot.json
+cp config.json /etc/mastodon-group-bot/config.json
 ```
 
 ## Systemd
@@ -48,7 +57,5 @@ cp ./services/openrc/mastodon-group-bot /etc/init.d/mastodon-group-bot
 
 # Usage
 ```
-Usage of mastodon-group-bot:
-  -config string
-        Path to config (default "config.json")
+mastodon-group-bot -config <path> -db <path>
 ```

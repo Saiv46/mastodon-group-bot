@@ -10,7 +10,7 @@ import (
 	"github.com/mattn/go-mastodon"
 )
 
-func run_bot(Conf Config) {
+func run_bot(Conf Config, DB string) {
 	c := mastodon.NewClient(&mastodon.Config{
 		Server:       Conf.Server,
 		ClientID:     Conf.ClientID,
@@ -24,8 +24,14 @@ func run_bot(Conf Config) {
 		log.Fatal(err)
 	}
 
-	my_account, _ := c.GetAccountCurrentUser(ctx)
-	followers, _ := c.GetAccountFollowers(ctx, my_account.ID, &mastodon.Pagination{Limit: 60})
+	my_account, err := c.GetAccountCurrentUser(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	followers, err := c.GetAccountFollowers(ctx, my_account.ID, &mastodon.Pagination{Limit: 60})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Run bot
 	for {
@@ -49,8 +55,8 @@ func run_bot(Conf Config) {
 		// New follower
 		if notif.Type == "follow" {
 			acct := notif.Account.Acct
-			if !followed(acct) { // Add to db and post welcome message
-				add_to_db(acct, Conf.Max_toots)
+			if !followed(acct, DB) { // Add to db and post welcome message
+				add_to_db(acct, Conf.Max_toots, DB)
 				var message = fmt.Sprintf("%s @%s", Conf.WelcomeMessage, acct)
 				postToot(message, "public")
 			}
@@ -63,11 +69,11 @@ func run_bot(Conf Config) {
 				if acct == string(followers[i].Acct) { // Follow check
 					if notif.Status.Visibility == "public" { // Reblog toot
 						if notif.Status.InReplyToID == nil { // Not boost replies
-							if !followed(acct) { // Add to db if needed
-								add_to_db(acct, Conf.Max_toots)
+							if !followed(acct, DB) { // Add to db if needed
+								add_to_db(acct, Conf.Max_toots, DB)
 							}
-							if check_ticket(acct, Conf.Max_toots, Conf.Toots_interval) > 0 { // Limit
-								take_ticket(acct)
+							if check_ticket(acct, Conf.Max_toots, Conf.Toots_interval, DB) > 0 { // Limit
+								take_ticket(acct, DB)
 								c.Reblog(ctx, notif.Status.ID)
 							}
 						}
