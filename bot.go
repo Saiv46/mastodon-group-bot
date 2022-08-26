@@ -98,15 +98,9 @@ func run_bot(Conf Config, DB string) {
 										c.AccountUnblock(ctx, mID)
 									}
 								}
-							} else {
-								var message = fmt.Sprintf("@%s%s", notif.Account.Acct, ", you are not admin!")
-								postToot(message, "direct")
 							}
 						}
 					}
-				} else {
-					var message = fmt.Sprintf("@%s%s", notif.Account.Acct, ", you are not subscribed!")
-					postToot(message, "direct")
 				}
 			}
 		}
