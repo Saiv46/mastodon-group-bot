@@ -1,3 +1,5 @@
 go.mod
 go.sum
 *.db
+*.log
+/mastodon-group-bot

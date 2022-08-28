@@ -3,6 +3,7 @@ name=$RC_SVCNAME
 command="/usr/bin/$name"
 command_arg1="-config /etc/$name/config.json"
 command_arg2="-db /var/lib/$name/limits.db"
+command_arg3="-log /var/log/$name/$name.log"
 pidfile="/run/$name.pid"
 user="nobody"
 description="Mastodon group bot which reposts toots"

@@ -36,13 +36,15 @@ go build
 ```
 
 # Setup services
-For first copy config, binary and make dirs
+For first make dirs, copy config and binary
 ```
 mkdir /etc/mastodon-group-bot
 mkdir /var/lib/mastodon-group-bot
+mkdir /var/log/mastodon-group-bot
 chown nobody /var/lib/mastodon-group-bot
-cp mastodon-group-bot /usr/bin/mastodon-group-bot
+chown nobody /var/log/mastodon-group-bot
 cp config.json /etc/mastodon-group-bot/config.json
+cp mastodon-group-bot /usr/bin/mastodon-group-bot
 ```
 
 ## Systemd
@@ -57,5 +59,5 @@ cp ./services/openrc/mastodon-group-bot /etc/init.d/mastodon-group-bot
 
 # Usage
 ```
-mastodon-group-bot -config <path> -db <path>
+mastodon-group-bot -config <path> -db <path> -log <path>
 ```

@@ -7,6 +7,12 @@ import (
 	"os"
 )
 
+var (
+	ConfPath = flag.String("config", "config.json", "Path to config")
+	DBPath   = flag.String("db", "limits.db", "Path to database")
+	LogPath  = flag.String("log", "mastodon-group-bot.log", "Path to log")
+)
+
 type Config struct {
 	Server         string   `json:"Server"`
 	ClientID       string   `json:"ClientID"`
@@ -18,18 +24,16 @@ type Config struct {
 	Admins         []string `json:"Admins"`
 }
 
-func read_conf() (Config, *string) {
-	ConfPath := flag.String("config", "config.json", "Path to config")
-	DBPath := flag.String("db", "limits.db", "Path to database")
+func ReadConf() Config {
 	flag.Parse()
 
 	data, err := os.ReadFile(*ConfPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to read config")
 	}
 
 	var Conf Config
 	json.Unmarshal(data, &Conf)
 
-	return Conf, DBPath
+	return Conf
 }

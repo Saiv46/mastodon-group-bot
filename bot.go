@@ -3,14 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 
 	"github.com/mattn/go-mastodon"
 )
 
-func run_bot(Conf Config, DB string) {
+func RunBot(Conf Config) {
+	logger_init()
+
 	c := mastodon.NewClient(&mastodon.Config{
 		Server:       Conf.Server,
 		ClientID:     Conf.ClientID,
@@ -21,16 +22,16 @@ func run_bot(Conf Config, DB string) {
 	ctx := context.Background()
 	events, err := c.StreamingUser(ctx)
 	if err != nil {
-		log.Fatal(err)
+		ErrorLogger.Println("Streaming")
 	}
 
 	my_account, err := c.GetAccountCurrentUser(ctx)
 	if err != nil {
-		log.Fatal(err)
+		ErrorLogger.Println("Fetch account info")
 	}
 	followers, err := c.GetAccountFollowers(ctx, my_account.ID, &mastodon.Pagination{Limit: 60})
 	if err != nil {
-		log.Fatal(err)
+		ErrorLogger.Println("Fetch followers")
 	}
 
 	// Run bot
@@ -55,10 +56,18 @@ func run_bot(Conf Config, DB string) {
 		// New follower
 		if notif.Type == "follow" {
 			acct := notif.Account.Acct
-			if !followed(acct, DB) { // Add to db and post welcome message
-				add_to_db(acct, Conf.Max_toots, DB)
+			if !followed(acct) { // Add to db and post welcome message
+				InfoLogger.Printf("%s followed", acct)
+
+				add_to_db(acct, Conf.Max_toots)
+				InfoLogger.Printf("%s added to database", acct)
+
 				var message = fmt.Sprintf("%s @%s", Conf.WelcomeMessage, acct)
-				postToot(message, "public")
+				err := postToot(message, "public")
+				if err != nil {
+					ErrorLogger.Println("Post welcome message")
+				}
+				InfoLogger.Printf("%s was welcomed", acct)
 			}
 		}
 
@@ -69,13 +78,20 @@ func run_bot(Conf Config, DB string) {
 				if acct == string(followers[i].Acct) { // Follow check
 					if notif.Status.Visibility == "public" { // Reblog toot
 						if notif.Status.InReplyToID == nil { // Not boost replies
-							if !followed(acct, DB) { // Add to db if needed
-								add_to_db(acct, Conf.Max_toots, DB)
+							if !followed(acct) { // Add to db if needed
+								add_to_db(acct, Conf.Max_toots)
+								InfoLogger.Printf("%s added to database", acct)
 							}
-							if check_ticket(acct, Conf.Max_toots, Conf.Toots_interval, DB) > 0 { // Limit
-								take_ticket(acct, DB)
+							if check_ticket(acct, Conf.Max_toots, Conf.Toots_interval) > 0 { // Limit
+								take_ticket(acct)
+								InfoLogger.Printf("Ticket of %s was taken", acct)
 								c.Reblog(ctx, notif.Status.ID)
+								InfoLogger.Printf("Toot %s of %s was rebloged", notif.Status.URL, acct)
+							} else {
+								WarnLogger.Printf("%s haven't tickets", acct)
 							}
+						} else {
+							WarnLogger.Printf("%s is reply and not boosted", notif.Status.URL)
 						}
 					} else if notif.Status.Visibility == "direct" { // Admin commands
 						for y := 0; y < len(Conf.Admins); y++ {
@@ -98,8 +114,12 @@ func run_bot(Conf Config, DB string) {
 										c.AccountUnblock(ctx, mID)
 									}
 								}
+							} else {
+								break
 							}
 						}
+					} else {
+						break
 					}
 				}
 			}

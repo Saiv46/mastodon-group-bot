@@ -1,7 +1,7 @@
 package main
 
 func main() {
-	config, db := read_conf()
+	config := ReadConf()
 
-	run_bot(config, *db)
+	RunBot(config)
 }
