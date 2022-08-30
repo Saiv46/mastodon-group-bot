@@ -119,6 +119,7 @@ func RunBot(Conf Config) {
 							}
 						}
 					} else {
+						WarnLogger.Printf("%s is not public toot and not boosted", notif.Status.URL)
 						break
 					}
 				}
