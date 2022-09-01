@@ -5,13 +5,13 @@ This is a bot which implements group functionality in Mastodon.
 * Repost toots
 * Welcome message of new members
 * Limit of toots per hour
+* Duplicate protection
+* Logging
 * Admin commands
 
 ### Admin commands
 * unboost \<Toot ID>
 * delete  \<Toot ID>
-* block   \<User ID>
-* unblock \<User ID>
 
 # Configuration
 The bot is configured in a JSON file that looks like this:
@@ -22,8 +22,9 @@ The bot is configured in a JSON file that looks like this:
     "ClientSecret":     "0000000000000000000000000000000000000000000",
     "AccessToken":      "0000000000000000000000000000000000000000000",
     "WelcomeMessage":   "We have a new member in our group. Please love and favor"
-    "Max_toots":        1,
-    "Toots_interval":   24,
+    "Max_toots":        2,
+    "Toots_interval":   12,
+    "Duplicate_buf":    10,
     "Admins":           ["admin@example.com"]
 }
 ```

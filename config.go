@@ -9,8 +9,10 @@ import (
 
 var (
 	ConfPath = flag.String("config", "config.json", "Path to config")
-	DBPath   = flag.String("db", "limits.db", "Path to database")
+	DBPath   = flag.String("db", "mastodon-group-bot.db", "Path to database")
 	LogPath  = flag.String("log", "mastodon-group-bot.log", "Path to log")
+
+	Conf = ReadConfig()
 )
 
 type Config struct {
@@ -21,10 +23,11 @@ type Config struct {
 	WelcomeMessage string   `json:"WelcomeMessage"`
 	Max_toots      uint16   `json:"Max_toots"`
 	Toots_interval uint16   `json:"Toots_interval"`
+	Duplicate_buf  int      `json:"Duplicate_buf"`
 	Admins         []string `json:"Admins"`
 }
 
-func ReadConf() Config {
+func ReadConfig() Config {
 	flag.Parse()
 
 	data, err := os.ReadFile(*ConfPath)

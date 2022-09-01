@@ -15,25 +15,97 @@ func init_limit_db() *sql.DB {
 	if err != nil {
 		ErrorLogger.Println("Open database")
 	}
-	cmd := `CREATE TABLE IF NOT EXISTS Limits (id INTEGER PRIMARY KEY AUTOINCREMENT, acct TEXT, ticket INTEGER, time TEXT)`
-	stat, err := db.Prepare(cmd)
+
+	cmd1 := `CREATE TABLE IF NOT EXISTS Limits (id INTEGER PRIMARY KEY AUTOINCREMENT, acct TEXT, ticket INTEGER, time TEXT)`
+	cmd2 := `CREATE TABLE IF NOT EXISTS MsgHashs (message_hash TEXT)`
+
+	stat1, err := db.Prepare(cmd1)
 	if err != nil {
 		ErrorLogger.Println("Create database")
 	}
-	stat.Exec()
+	stat1.Exec()
+
+	stat2, err := db.Prepare(cmd2)
+	if err != nil {
+		ErrorLogger.Println("Create database")
+	}
+	stat2.Exec()
 
 	return db
 }
 
 // Add account to database
-func add_to_db(acct string, limit uint16) {
+func add_to_db(acct string) {
 	db := init_limit_db()
 	cmd := `INSERT INTO Limits (acct, ticket) VALUES (?, ?)`
 	stat, err := db.Prepare(cmd)
 	if err != nil {
 		ErrorLogger.Println("Add account to databse")
 	}
-	stat.Exec(acct, limit)
+	stat.Exec(acct, Conf.Max_toots)
+}
+
+// Save message hash
+func save_msg_hash(hash string) {
+	db := init_limit_db()
+
+	cmd1 := `SELECT COUNT(*) FROM MsgHashs`
+	cmd2 := `DELETE FROM MsgHashs WHERE ROWID IN (SELECT ROWID FROM MsgHashs LIMIT 1)`
+	cmd3 := `INSERT INTO MsgHashs (message_hash) VALUES (?)`
+
+	var rows int
+
+	db.QueryRow(cmd1).Scan(&rows)
+
+	if rows >= Conf.Duplicate_buf {
+		superfluous := rows - Conf.Duplicate_buf
+
+		for i := 0; i <= superfluous; i++ {
+			stat2, err := db.Prepare(cmd2)
+			if err != nil {
+				ErrorLogger.Println("Delete message hash from database")
+			}
+			stat2.Exec()
+		}
+	}
+
+	stat1, err := db.Prepare(cmd3)
+	if err != nil {
+		ErrorLogger.Println("Add message hash to database")
+	}
+	stat1.Exec(hash)
+}
+
+// Check followed once
+func followed(acct string) bool {
+	db := init_limit_db()
+	cmd := `SELECT acct FROM Limits WHERE acct = ?`
+	err := db.QueryRow(cmd, acct).Scan(&acct)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			InfoLogger.Println("Check followed")
+		}
+
+		return false
+	}
+
+	return true
+}
+
+// Check message hash
+func check_msg_hash(hash string) bool {
+	db := init_limit_db()
+	cmd := `SELECT message_hash FROM MsgHashs WHERE message_hash = ?`
+	err := db.QueryRow(cmd, hash).Scan(&hash)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			InfoLogger.Println("Check message hash in database")
+		}
+
+		return false
+	}
+
+	return true
 }
 
 // Take ticket for tooting
@@ -59,24 +131,8 @@ func take_ticket(acct string) {
 	stat.Exec(ticket, last_toot_at, acct)
 }
 
-// Check followed once
-func followed(acct string) bool {
-	db := init_limit_db()
-	cmd := `SELECT acct FROM Limits WHERE acct = ?`
-	err := db.QueryRow(cmd, acct).Scan(&acct)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			ErrorLogger.Println("Check followed")
-		}
-
-		return false
-	}
-
-	return true
-}
-
 // Check ticket availability
-func check_ticket(acct string, ticket uint16, toots_interval uint16) uint16 {
+func check_ticket(acct string) uint16 {
 	db := init_limit_db()
 	cmd1 := `SELECT ticket FROM Limits WHERE acct = ?`
 	cmd2 := `SELECT time FROM Limits WHERE acct = ?`
@@ -90,7 +146,7 @@ func check_ticket(acct string, ticket uint16, toots_interval uint16) uint16 {
 	lastT, _ := time.Parse("2006/01/02 15:04:05 MST", lastS)
 
 	since := time.Since(lastT)
-	limit := fmt.Sprintf("%dh", toots_interval)
+	limit := fmt.Sprintf("%dh", Conf.Toots_interval)
 	interval, _ := time.ParseDuration(limit)
 
 	if since >= interval {
@@ -99,9 +155,9 @@ func check_ticket(acct string, ticket uint16, toots_interval uint16) uint16 {
 		if err != nil {
 			ErrorLogger.Println("Check ticket availability")
 		}
-		stat.Exec(ticket, acct)
+		stat.Exec(Conf.Max_toots, acct)
 
-		return ticket
+		return Conf.Max_toots
 	}
 
 	return tickets
