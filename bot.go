@@ -130,7 +130,7 @@ func RunBot() {
 									}
 								}
 							} else {
-								break
+								continue
 							}
 						}
 					} else {
