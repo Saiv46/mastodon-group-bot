@@ -116,17 +116,19 @@ func RunBot() {
 					} else if notif.Status.Visibility == "direct" { // Admin commands
 						for y := 0; y < len(Conf.Admins); y++ {
 							if acct == Conf.Admins[y] {
-								recmd := regexp.MustCompile(`<.*?> `)
+								recmd := regexp.MustCompile(`<[^>]+>`)
 								command := recmd.ReplaceAllString(content, "")
 								args := strings.Split(command, " ")
-								mID := mastodon.ID((args[1]))
+								mID := mastodon.ID((args[2]))
 
-								if len(args) == 2 {
-									switch args[0] {
+								if len(args) == 3 {
+									switch args[1] {
 									case "unboost":
 										c.Unreblog(ctx, mID)
+								        WarnLogger.Printf("%s was unrebloged", mID)
 									case "delete":
 										c.DeleteStatus(ctx, mID)
+								        WarnLogger.Printf("%s was deleted", mID)
 									}
 								}
 							} else {
