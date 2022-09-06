@@ -16,18 +16,18 @@ func init_limit_db() *sql.DB {
 		ErrorLogger.Println("Open database")
 	}
 
-	cmd1 := `CREATE TABLE IF NOT EXISTS Limits (id INTEGER PRIMARY KEY AUTOINCREMENT, acct TEXT, ticket INTEGER, time TEXT)`
+	cmd1 := `CREATE TABLE IF NOT EXISTS Limits (id INTEGER PRIMARY KEY AUTOINCREMENT, acct TEXT, ticket INTEGER, order_msg INTEGER, time TEXT)`
 	cmd2 := `CREATE TABLE IF NOT EXISTS MsgHashs (message_hash TEXT)`
 
 	stat1, err := db.Prepare(cmd1)
 	if err != nil {
-		ErrorLogger.Println("Create database")
+		ErrorLogger.Println("Create database and table Limits")
 	}
 	stat1.Exec()
 
 	stat2, err := db.Prepare(cmd2)
 	if err != nil {
-		ErrorLogger.Println("Create database")
+		ErrorLogger.Println("Create database and table MsgHashs")
 	}
 	stat2.Exec()
 
@@ -37,43 +37,12 @@ func init_limit_db() *sql.DB {
 // Add account to database
 func add_to_db(acct string) {
 	db := init_limit_db()
-	cmd := `INSERT INTO Limits (acct, ticket) VALUES (?, ?)`
+	cmd := `INSERT INTO Limits (acct, ticket, order_msg) VALUES (?, ?, ?)`
 	stat, err := db.Prepare(cmd)
 	if err != nil {
 		ErrorLogger.Println("Add account to databse")
 	}
-	stat.Exec(acct, Conf.Max_toots)
-}
-
-// Save message hash
-func save_msg_hash(hash string) {
-	db := init_limit_db()
-
-	cmd1 := `SELECT COUNT(*) FROM MsgHashs`
-	cmd2 := `DELETE FROM MsgHashs WHERE ROWID IN (SELECT ROWID FROM MsgHashs LIMIT 1)`
-	cmd3 := `INSERT INTO MsgHashs (message_hash) VALUES (?)`
-
-	var rows int
-
-	db.QueryRow(cmd1).Scan(&rows)
-
-	if rows >= Conf.Duplicate_buf {
-		superfluous := rows - Conf.Duplicate_buf
-
-		for i := 0; i <= superfluous; i++ {
-			stat2, err := db.Prepare(cmd2)
-			if err != nil {
-				ErrorLogger.Println("Delete message hash from database")
-			}
-			stat2.Exec()
-		}
-	}
-
-	stat1, err := db.Prepare(cmd3)
-	if err != nil {
-		ErrorLogger.Println("Add message hash to database")
-	}
-	stat1.Exec(hash)
+	stat.Exec(acct, Conf.Max_toots, 0)
 }
 
 // Check followed once
@@ -84,22 +53,6 @@ func followed(acct string) bool {
 	if err != nil {
 		if err != sql.ErrNoRows {
 			InfoLogger.Println("Check followed")
-		}
-
-		return false
-	}
-
-	return true
-}
-
-// Check message hash
-func check_msg_hash(hash string) bool {
-	db := init_limit_db()
-	cmd := `SELECT message_hash FROM MsgHashs WHERE message_hash = ?`
-	err := db.QueryRow(cmd, hash).Scan(&hash)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			InfoLogger.Println("Check message hash in database")
 		}
 
 		return false
@@ -161,4 +114,90 @@ func check_ticket(acct string) uint16 {
 	}
 
 	return tickets
+}
+
+// Save message hash
+func save_msg_hash(hash string) {
+	db := init_limit_db()
+
+	cmd1 := `SELECT COUNT(*) FROM MsgHashs`
+	cmd2 := `DELETE FROM MsgHashs WHERE ROWID IN (SELECT ROWID FROM MsgHashs LIMIT 1)`
+	cmd3 := `INSERT INTO MsgHashs (message_hash) VALUES (?)`
+
+	var rows uint16
+
+	db.QueryRow(cmd1).Scan(&rows)
+
+	if rows >= Conf.Duplicate_buf {
+		superfluous := rows - Conf.Duplicate_buf
+
+		for i := uint16(0); i <= superfluous; i++ {
+			stat2, err := db.Prepare(cmd2)
+			if err != nil {
+				ErrorLogger.Println("Delete message hash from database")
+			}
+			stat2.Exec()
+		}
+	}
+
+	stat1, err := db.Prepare(cmd3)
+	if err != nil {
+		ErrorLogger.Println("Add message hash to database")
+	}
+	stat1.Exec(hash)
+}
+
+// Check message hash
+func check_msg_hash(hash string) bool {
+	db := init_limit_db()
+	cmd := `SELECT message_hash FROM MsgHashs WHERE message_hash = ?`
+	err := db.QueryRow(cmd, hash).Scan(&hash)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			InfoLogger.Println("Check message hash in database")
+		}
+
+		return false
+	}
+
+	return true
+}
+
+// Count order
+func count_order(acct string) {
+	db := init_limit_db()
+	cmd1 := `UPDATE Limits SET order_msg = ? WHERE acct != ?`
+	cmd2 := `SELECT order_msg FROM Limits WHERE acct = ?`
+	cmd3 := `UPDATE Limits SET order_msg = ? WHERE acct = ?`
+
+	stat1, err := db.Prepare(cmd1)
+	if err != nil {
+		ErrorLogger.Println("Count order to zero")
+	}
+
+	stat1.Exec(0, acct)
+
+	var order uint16
+	db.QueryRow(cmd2, acct).Scan(&order)
+	if order < Conf.Order_limit {
+		order = order + 1
+	}
+
+	stat2, err := db.Prepare(cmd3)
+	if err != nil {
+		ErrorLogger.Println("Count order")
+	}
+
+	stat2.Exec(order, acct)
+}
+
+// Check order
+func check_order(acct string) uint16 {
+	db := init_limit_db()
+	cmd := `SELECT order_msg FROM Limits WHERE acct = ?`
+
+	var order uint16
+	db.QueryRow(cmd, acct).Scan(&order)
+
+	return order
 }

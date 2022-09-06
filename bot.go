@@ -63,7 +63,7 @@ func RunBot() {
 				add_to_db(acct)
 				InfoLogger.Printf("%s added to database", acct)
 
-				var message = fmt.Sprintf("%s @%s", Conf.WelcomeMessage, acct)
+				message := fmt.Sprintf("%s @%s", Conf.WelcomeMessage, acct)
 				err := postToot(message, "public")
 				if err != nil {
 					ErrorLogger.Println("Post welcome message")
@@ -101,14 +101,22 @@ func RunBot() {
 								InfoLogger.Printf("%s added to database", acct)
 							}
 
-							// Message limit
-							if check_ticket(acct) > 0 {
-								take_ticket(acct)
-								InfoLogger.Printf("Ticket of %s was taken", acct)
-								c.Reblog(ctx, notif.Status.ID)
-								InfoLogger.Printf("Toot %s of %s was rebloged", tooturl, acct)
+							// Message order
+							if check_order(acct) < Conf.Order_limit {
+								if check_ticket(acct) > 0 { // Message limit
+									take_ticket(acct)
+									InfoLogger.Printf("Ticket of %s was taken", acct)
+
+									count_order(acct)
+									InfoLogger.Printf("Order of %s was counted", acct)
+
+									c.Reblog(ctx, notif.Status.ID)
+									InfoLogger.Printf("Toot %s of %s was rebloged", tooturl, acct)
+								} else {
+									WarnLogger.Printf("%s haven't tickets", acct)
+								}
 							} else {
-								WarnLogger.Printf("%s haven't tickets", acct)
+								WarnLogger.Printf("%s order limit", acct)
 							}
 						} else {
 							WarnLogger.Printf("%s is reply and not boosted", tooturl)
@@ -125,10 +133,10 @@ func RunBot() {
 									switch args[1] {
 									case "unboost":
 										c.Unreblog(ctx, mID)
-								        WarnLogger.Printf("%s was unrebloged", mID)
+										WarnLogger.Printf("%s was unrebloged", mID)
 									case "delete":
 										c.DeleteStatus(ctx, mID)
-								        WarnLogger.Printf("%s was deleted", mID)
+										WarnLogger.Printf("%s was deleted", mID)
 									}
 								}
 							} else {

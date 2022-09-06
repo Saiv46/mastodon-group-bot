@@ -25,6 +25,7 @@ The bot is configured in a JSON file that looks like this:
     "Max_toots":        2,
     "Toots_interval":   12,
     "Duplicate_buf":    10,
+    "Order_limit":            1,
     "Admins":           ["admin@example.com"]
 }
 ```

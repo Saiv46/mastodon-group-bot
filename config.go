@@ -23,7 +23,8 @@ type Config struct {
 	WelcomeMessage string   `json:"WelcomeMessage"`
 	Max_toots      uint16   `json:"Max_toots"`
 	Toots_interval uint16   `json:"Toots_interval"`
-	Duplicate_buf  int      `json:"Duplicate_buf"`
+	Duplicate_buf  uint16   `json:"Duplicate_buf"`
+	Order_limit    uint16   `json:"Order_limit"`
 	Admins         []string `json:"Admins"`
 }
 
