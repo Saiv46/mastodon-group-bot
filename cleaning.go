@@ -15,6 +15,8 @@ var (
 func DeleteNotices() {
 	wg.Done()
 
+	LoggerInit()
+
 	for {
 		statuses, err := c.GetAccountStatuses(ctx, my_account.ID, &mastodon.Pagination{Limit: 60})
 		if err != nil {

@@ -11,3 +11,13 @@ func postToot(toot string, vis string) (*mastodon.Status, error) {
 	status, err := c.PostStatus(ctx, &conToot)
 	return status, err
 }
+
+// Check following
+func check_following(followers []*mastodon.Account, acct string) bool {
+	for i := range followers {
+		if acct == string(followers[i].Acct) {
+			return true
+		}
+	}
+	return false
+}
