@@ -21,16 +21,18 @@ func DeleteNotices() {
 			ErrorLogger.Println("Get account statuses")
 		}
 
-		time.Sleep(time.Duration(Conf.Del_notices_interval) * time.Second)
+		time.Sleep(time.Duration(Conf.Del_notices_interval) * time.Minute)
 
-		for i := range statuses {
-			if statuses[i].Visibility == "direct" {
-				c.DeleteStatus(ctx, statuses[i].ID)
+		if len(statuses) > 0 {
+			for i := range statuses {
+				if statuses[i].Visibility == "direct" {
+					c.DeleteStatus(ctx, statuses[i].ID)
+				}
 			}
-		}
-		InfoLogger.Println("Cleaning notices")
+			InfoLogger.Println("Cleaning notices")
 
-		reset_notice_counter()
-		InfoLogger.Println("Reset notice counter")
+			reset_notice_counter()
+			InfoLogger.Println("Reset notice counter")
+		}
 	}
 }

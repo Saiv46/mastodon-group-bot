@@ -42,22 +42,11 @@ func RunBot() {
 		}
 
 		notif := notifEvent.Notification
-		ntype := notif.Type
-		acct := notif.Status.Account.Acct
-		content := notif.Status.Content
-		tooturl := notif.Status.URL
-
-		/*postToot := func(toot string, vis string) (*mastodon.Status, error) {
-			conToot := mastodon.Toot{
-				Status:     toot,
-				Visibility: vis,
-			}
-			status, err := c.PostStatus(ctx, &conToot)
-			return status, err
-		}*/
 
 		// New follower
-		if ntype == "follow" {
+		if notif.Type == "follow" {
+			acct := notif.Status.Account.Acct
+
 			if !exist_in_database(acct) { // Add to db and post welcome message
 				InfoLogger.Printf("%s followed", acct)
 
@@ -74,8 +63,12 @@ func RunBot() {
 		}
 
 		// Read message
-		if ntype == "mention" {
-			for i := 0; i < len(followers); i++ {
+		if notif.Type == "mention" {
+			acct := notif.Status.Account.Acct
+			content := notif.Status.Content
+			tooturl := notif.Status.URL
+
+			for i := range followers {
 				if acct == string(followers[i].Acct) { // Follow check
 					if notif.Status.Visibility == "public" { // Reblog toot
 						if notif.Status.InReplyToID == nil { // Not boost replies
@@ -124,9 +117,10 @@ func RunBot() {
 								recmd := regexp.MustCompile(`<[^>]+>`)
 								command := recmd.ReplaceAllString(content, "")
 								args := strings.Split(command, " ")
-								mID := mastodon.ID((args[2]))
 
 								if len(args) == 3 {
+									mID := mastodon.ID((args[2]))
+
 									switch args[1] {
 									case "unboost":
 										c.Unreblog(ctx, mID)
