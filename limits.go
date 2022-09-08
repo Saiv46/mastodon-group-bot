@@ -9,6 +9,10 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+var (
+	db = init_limit_db()
+)
+
 // Init database
 func init_limit_db() *sql.DB {
 	db, err := sql.Open("sqlite3", *DBPath)
@@ -16,7 +20,7 @@ func init_limit_db() *sql.DB {
 		ErrorLogger.Println("Open database")
 	}
 
-	cmd1 := `CREATE TABLE IF NOT EXISTS Limits (id INTEGER PRIMARY KEY AUTOINCREMENT, acct TEXT, ticket INTEGER, order_msg INTEGER, time TEXT)`
+	cmd1 := `CREATE TABLE IF NOT EXISTS Limits (id INTEGER PRIMARY KEY AUTOINCREMENT, acct TEXT, ticket INTEGER, order_msg INTEGER, got_notice INTEGER, posted TEXT)`
 	cmd2 := `CREATE TABLE IF NOT EXISTS MsgHashs (message_hash TEXT)`
 
 	stat1, err := db.Prepare(cmd1)
@@ -36,18 +40,16 @@ func init_limit_db() *sql.DB {
 
 // Add account to database
 func add_to_db(acct string) {
-	db := init_limit_db()
-	cmd := `INSERT INTO Limits (acct, ticket, order_msg) VALUES (?, ?, ?)`
+	cmd := `INSERT INTO Limits (acct, ticket, order_msg, got_notice) VALUES (?, ?, ?, ?)`
 	stat, err := db.Prepare(cmd)
 	if err != nil {
-		ErrorLogger.Println("Add account to databse")
+		ErrorLogger.Println("Add account to database")
 	}
-	stat.Exec(acct, Conf.Max_toots, 0)
+	stat.Exec(acct, Conf.Max_toots, 0, 0)
 }
 
 // Check followed once
-func followed(acct string) bool {
-	db := init_limit_db()
+func exist_in_database(acct string) bool {
 	cmd := `SELECT acct FROM Limits WHERE acct = ?`
 	err := db.QueryRow(cmd, acct).Scan(&acct)
 	if err != nil {
@@ -63,34 +65,32 @@ func followed(acct string) bool {
 
 // Take ticket for tooting
 func take_ticket(acct string) {
-	db := init_limit_db()
 	cmd1 := `SELECT ticket FROM Limits WHERE acct = ?`
-	cmd2 := `UPDATE Limits SET ticket = ?, time = ? WHERE acct = ?`
+	cmd2 := `UPDATE Limits SET ticket = ?, posted = ? WHERE acct = ?`
 
-	var ticket uint16
+	var ticket uint
 	db.QueryRow(cmd1, acct).Scan(&ticket)
 	if ticket > 0 {
 		ticket = ticket - 1
 	}
+
+	now := time.Now()
+	last_toot_at := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second(), 0, time.Local).Format("2006/01/02 15:04:05 MST")
 
 	stat, err := db.Prepare(cmd2)
 	if err != nil {
 		ErrorLogger.Println("Take ticket")
 	}
 
-	now := time.Now()
-	last_toot_at := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second(), 0, time.Local).Format("2006/01/02 15:04:05 MST")
-
 	stat.Exec(ticket, last_toot_at, acct)
 }
 
 // Check ticket availability
-func check_ticket(acct string) uint16 {
-	db := init_limit_db()
+func check_ticket(acct string) uint {
 	cmd1 := `SELECT ticket FROM Limits WHERE acct = ?`
-	cmd2 := `SELECT time FROM Limits WHERE acct = ?`
+	cmd2 := `SELECT posted FROM Limits WHERE acct = ?`
 
-	var tickets uint16
+	var tickets uint
 	var lastS string
 
 	db.QueryRow(cmd1, acct).Scan(&tickets)
@@ -118,20 +118,18 @@ func check_ticket(acct string) uint16 {
 
 // Save message hash
 func save_msg_hash(hash string) {
-	db := init_limit_db()
-
 	cmd1 := `SELECT COUNT(*) FROM MsgHashs`
 	cmd2 := `DELETE FROM MsgHashs WHERE ROWID IN (SELECT ROWID FROM MsgHashs LIMIT 1)`
 	cmd3 := `INSERT INTO MsgHashs (message_hash) VALUES (?)`
 
-	var rows uint16
+	var rows uint
 
 	db.QueryRow(cmd1).Scan(&rows)
 
 	if rows >= Conf.Duplicate_buf {
 		superfluous := rows - Conf.Duplicate_buf
 
-		for i := uint16(0); i <= superfluous; i++ {
+		for i := uint(0); i <= superfluous; i++ {
 			stat2, err := db.Prepare(cmd2)
 			if err != nil {
 				ErrorLogger.Println("Delete message hash from database")
@@ -149,7 +147,6 @@ func save_msg_hash(hash string) {
 
 // Check message hash
 func check_msg_hash(hash string) bool {
-	db := init_limit_db()
 	cmd := `SELECT message_hash FROM MsgHashs WHERE message_hash = ?`
 	err := db.QueryRow(cmd, hash).Scan(&hash)
 	if err != nil {
@@ -165,7 +162,6 @@ func check_msg_hash(hash string) bool {
 
 // Count order
 func count_order(acct string) {
-	db := init_limit_db()
 	cmd1 := `UPDATE Limits SET order_msg = ? WHERE acct != ?`
 	cmd2 := `SELECT order_msg FROM Limits WHERE acct = ?`
 	cmd3 := `UPDATE Limits SET order_msg = ? WHERE acct = ?`
@@ -177,7 +173,7 @@ func count_order(acct string) {
 
 	stat1.Exec(0, acct)
 
-	var order uint16
+	var order uint
 	db.QueryRow(cmd2, acct).Scan(&order)
 	if order < Conf.Order_limit {
 		order = order + 1
@@ -192,12 +188,51 @@ func count_order(acct string) {
 }
 
 // Check order
-func check_order(acct string) uint16 {
-	db := init_limit_db()
+func check_order(acct string) uint {
 	cmd := `SELECT order_msg FROM Limits WHERE acct = ?`
 
-	var order uint16
+	var order uint
 	db.QueryRow(cmd, acct).Scan(&order)
 
 	return order
+}
+
+// Mark notice
+func mark_notice(acct string) {
+	cmd1 := `SELECT got_notice FROM Limits WHERE acct = ?`
+	cmd2 := `UPDATE Limits SET got_notice = ? WHERE acct = ?`
+
+	var notice uint
+	db.QueryRow(cmd1, acct).Scan(&notice)
+
+	if notice == 0 {
+		notice = notice + 1
+	}
+
+	stat, err := db.Prepare(cmd2)
+	if err != nil {
+		ErrorLogger.Println("Mark notice")
+	}
+	stat.Exec(notice, acct)
+}
+
+// Reset notice counter
+func reset_notice_counter() {
+	cmd := `UPDATE Limits SET got_notice = ?`
+
+	stat, err := db.Prepare(cmd)
+	if err != nil {
+		ErrorLogger.Println("Reset notice counter")
+	}
+	stat.Exec(0)
+}
+
+// Check if got notification
+func got_notice(acct string) uint {
+	cmd := `SELECT got_notice FROM Limits WHERE acct = ?`
+
+	var notice uint
+	db.QueryRow(cmd, acct).Scan(&notice)
+
+	return notice
 }

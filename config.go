@@ -16,16 +16,18 @@ var (
 )
 
 type Config struct {
-	Server         string   `json:"Server"`
-	ClientID       string   `json:"ClientID"`
-	ClientSecret   string   `json:"ClientSecret"`
-	AccessToken    string   `json:"AccessToken"`
-	WelcomeMessage string   `json:"WelcomeMessage"`
-	Max_toots      uint16   `json:"Max_toots"`
-	Toots_interval uint16   `json:"Toots_interval"`
-	Duplicate_buf  uint16   `json:"Duplicate_buf"`
-	Order_limit    uint16   `json:"Order_limit"`
-	Admins         []string `json:"Admins"`
+	Server               string   `json:"Server"`
+	ClientID             string   `json:"ClientID"`
+	ClientSecret         string   `json:"ClientSecret"`
+	AccessToken          string   `json:"AccessToken"`
+	WelcomeMessage       string   `json:"WelcomeMessage"`
+	NotFollowedMessage   string   `json:"NotFollowedMessage"`
+	Max_toots            uint     `json:"Max_toots"`
+	Toots_interval       uint     `json:"Toots_interval"`
+	Duplicate_buf        uint     `json:"Duplicate_buf"`
+	Order_limit          uint     `json:"Order_limit"`
+	Del_notices_interval uint     `json:"Del_notices_interval"`
+	Admins               []string `json:"Admins"`
 }
 
 func ReadConfig() Config {

@@ -10,26 +10,25 @@ import (
 	"github.com/mattn/go-mastodon"
 )
 
-func RunBot() {
-	logger_init()
-
-	c := mastodon.NewClient(&mastodon.Config{
+var (
+	c = mastodon.NewClient(&mastodon.Config{
 		Server:       Conf.Server,
 		ClientID:     Conf.ClientID,
 		ClientSecret: Conf.ClientSecret,
 		AccessToken:  Conf.AccessToken,
 	})
 
-	ctx := context.Background()
+	ctx = context.Background()
+
+	my_account, _ = c.GetAccountCurrentUser(ctx)
+)
+
+func RunBot() {
 	events, err := c.StreamingUser(ctx)
 	if err != nil {
 		ErrorLogger.Println("Streaming")
 	}
 
-	my_account, err := c.GetAccountCurrentUser(ctx)
-	if err != nil {
-		ErrorLogger.Println("Fetch account info")
-	}
 	followers, err := c.GetAccountFollowers(ctx, my_account.ID, &mastodon.Pagination{Limit: 60})
 	if err != nil {
 		ErrorLogger.Println("Fetch followers")
@@ -43,28 +42,30 @@ func RunBot() {
 		}
 
 		notif := notifEvent.Notification
+		ntype := notif.Type
+		acct := notif.Status.Account.Acct
+		content := notif.Status.Content
+		tooturl := notif.Status.URL
 
-		// Posting function
-		postToot := func(toot string, vis string) error {
+		/*postToot := func(toot string, vis string) (*mastodon.Status, error) {
 			conToot := mastodon.Toot{
 				Status:     toot,
 				Visibility: vis,
 			}
-			_, err := c.PostStatus(ctx, &conToot)
-			return err
-		}
+			status, err := c.PostStatus(ctx, &conToot)
+			return status, err
+		}*/
 
 		// New follower
-		if notif.Type == "follow" {
-			acct := notif.Account.Acct
-			if !followed(acct) { // Add to db and post welcome message
+		if ntype == "follow" {
+			if !exist_in_database(acct) { // Add to db and post welcome message
 				InfoLogger.Printf("%s followed", acct)
 
 				add_to_db(acct)
 				InfoLogger.Printf("%s added to database", acct)
 
 				message := fmt.Sprintf("%s @%s", Conf.WelcomeMessage, acct)
-				err := postToot(message, "public")
+				_, err := postToot(message, "public")
 				if err != nil {
 					ErrorLogger.Println("Post welcome message")
 				}
@@ -73,11 +74,7 @@ func RunBot() {
 		}
 
 		// Read message
-		if notif.Type == "mention" {
-			acct := notif.Status.Account.Acct
-			content := notif.Status.Content
-			tooturl := notif.Status.URL
-
+		if ntype == "mention" {
 			for i := 0; i < len(followers); i++ {
 				if acct == string(followers[i].Acct) { // Follow check
 					if notif.Status.Visibility == "public" { // Reblog toot
@@ -96,7 +93,7 @@ func RunBot() {
 							}
 
 							// Add to db if needed
-							if !followed(acct) {
+							if !exist_in_database(acct) {
 								add_to_db(acct)
 								InfoLogger.Printf("%s added to database", acct)
 							}
@@ -146,6 +143,24 @@ func RunBot() {
 					} else {
 						WarnLogger.Printf("%s is not public toot and not boosted", tooturl)
 						break
+					}
+				}
+				if i == len(followers)-1 { // Notify user
+					if got_notice(acct) == 0 {
+						if !exist_in_database(acct) {
+							add_to_db(acct)
+							InfoLogger.Printf("%s added to database", acct)
+						}
+
+						message := fmt.Sprintf("@%s %s", acct, Conf.NotFollowedMessage)
+						_, err := postToot(message, "direct")
+						if err != nil {
+							ErrorLogger.Printf("Notify %s", acct)
+						}
+						InfoLogger.Printf("%s has been notified", acct)
+
+						mark_notice(acct)
+						InfoLogger.Printf("%s marked notification in database", acct)
 					}
 				}
 			}

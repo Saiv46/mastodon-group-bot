@@ -11,7 +11,7 @@ var (
 	ErrorLogger *log.Logger
 )
 
-func logger_init() {
+func LoggerInit() {
 	file, err := os.OpenFile(*LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatal("Failed to read log file")

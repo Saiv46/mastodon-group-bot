@@ -1,12 +1,14 @@
 {
-    "Server":           "https://example.com",
-    "ClientID":         "0000000000000000000000000000000000000000000",
-    "ClientSecret":     "0000000000000000000000000000000000000000000",
-    "AccessToken":      "0000000000000000000000000000000000000000000",
-    "WelcomeMessage":   "We have a new member in our group. Please love and favor",
-    "Max_toots":        2,
-    "Toots_interval":   12,
-    "Duplicate_buf":    10,
-    "Order_limit":       1,
-    "Admins":           ["admin@example.com"]
+    "Server":               "https://example.com",
+    "ClientID":             "0000000000000000000000000000000000000000000",
+    "ClientSecret":         "0000000000000000000000000000000000000000000",
+    "AccessToken":          "0000000000000000000000000000000000000000000",
+    "WelcomeMessage":       "We have a new member in our group. Please love and favor",
+    "NotFollowedMessage":   "you are not followed",
+    "Max_toots":            2,
+    "Toots_interval":       12,
+    "Duplicate_buf":        10,
+    "Order_limit":          1,
+    "Del_notices_interval": 30,
+    "Admins":               ["admin@example.com"]
 }
