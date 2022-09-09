@@ -6,6 +6,8 @@ This is a bot which implements group functionality in Mastodon.
 * Welcome message of new members
 * Limit of toots per hour
 * Duplicate protection
+* Order limit
+* Notification cleaning
 * Logging
 * Admin commands
 
