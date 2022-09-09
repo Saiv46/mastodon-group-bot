@@ -70,6 +70,12 @@ func RunBot() {
 			content := notif.Status.Content
 			tooturl := notif.Status.URL
 
+			if check_following(followers, acct) {
+				fmt.Println("True")
+			} else {
+				fmt.Println("False")
+			}
+
 			// Follow check
 			if check_following(followers, acct) {
 				if notif.Status.Visibility == "public" { // Reblog toot

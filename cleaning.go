@@ -18,12 +18,12 @@ func DeleteNotices() {
 	LoggerInit()
 
 	for {
+		time.Sleep(time.Duration(Conf.Del_notices_interval) * time.Minute)
+
 		statuses, err := c.GetAccountStatuses(ctx, my_account.ID, &mastodon.Pagination{Limit: 60})
 		if err != nil {
 			ErrorLogger.Println("Get account statuses")
 		}
-
-		time.Sleep(time.Duration(Conf.Del_notices_interval) * time.Minute)
 
 		if len(statuses) > 0 {
 			for i := range statuses {
