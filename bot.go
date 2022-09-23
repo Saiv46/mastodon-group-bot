@@ -31,11 +31,6 @@ func RunBot() {
 		ErrorLogger.Println("Streaming")
 	}
 
-	followers, err := c.GetAccountFollowers(ctx, my_account.ID, &mastodon.Pagination{Limit: 60})
-	if err != nil {
-		ErrorLogger.Println("Fetch followers")
-	}
-
 	// Run bot
 	for {
 		notifEvent, ok := (<-events).(*mastodon.NotificationEvent)
@@ -66,18 +61,19 @@ func RunBot() {
 
 		// Read message
 		if notif.Type == "mention" {
+			var account_id = []string{string(notif.Status.Account.ID)}
 			acct := notif.Status.Account.Acct
 			content := notif.Status.Content
 			tooturl := notif.Status.URL
 
-			if check_following(followers, acct) {
-				fmt.Println("True")
-			} else {
-				fmt.Println("False")
+			// Fetch relationship
+			relationship, err := c.GetAccountRelationships(ctx, account_id)
+			if err != nil {
+				ErrorLogger.Println("Fetch relationship")
 			}
 
 			// Follow check
-			if check_following(followers, acct) {
+			if relationship[0].FollowedBy {
 				if notif.Status.Visibility == "public" { // Reblog toot
 					if notif.Status.InReplyToID == nil { // Not boost replies
 						// Duplicate protection
