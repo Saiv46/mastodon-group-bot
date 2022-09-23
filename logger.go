@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"log"
 	"os"
 )
@@ -16,7 +17,7 @@ func LoggerInit() {
 	if err != nil {
 		log.Fatal("Failed to read log file")
 	}
-	InfoLogger = log.New(file, "[INFO] ", log.LstdFlags|log.Lshortfile)
-	WarnLogger = log.New(file, "[WARNING] ", log.LstdFlags|log.Lshortfile)
-	ErrorLogger = log.New(file, "[ERROR] ", log.LstdFlags|log.Lshortfile)
+	InfoLogger = log.New(io.MultiWriter(os.Stdout, file), "[INFO] ", log.LstdFlags|log.Lshortfile)
+	WarnLogger = log.New(io.MultiWriter(os.Stdout, file), "[WARNING] ", log.LstdFlags|log.Lshortfile)
+	ErrorLogger = log.New(io.MultiWriter(os.Stdout, file), "[ERROR] ", log.LstdFlags|log.Lshortfile)
 }

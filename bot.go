@@ -24,8 +24,6 @@ var (
 )
 
 func RunBot() {
-	LoggerInit()
-
 	events, err := c.StreamingUser(ctx)
 	if err != nil {
 		ErrorLogger.Println("Streaming")
