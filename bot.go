@@ -146,16 +146,23 @@ func RunBot() {
 						add_to_db(acct)
 						InfoLogger.Printf("%s added to database", acct)
 					}
-
-					message := fmt.Sprintf("@%s %s", acct, Conf.NotFollowedMessage)
-					_, err := postToot(message, "direct")
-					if err != nil {
-						ErrorLogger.Printf("Notify %s", acct)
+					if notif.Status.InReplyToID == nil { // Prevent spam in DM if status is reply
+						message := fmt.Sprintf("@%s %s", acct, Conf.NotFollowedMessage)
+						_, err := postToot(message, "direct")
+						if err != nil {
+							ErrorLogger.Printf("Notify %s", acct)
+						}
+						InfoLogger.Printf("%s has been notified", acct)
+						mark_notice(acct)
+						if got_notice(acct) == 0 {
+							InfoLogger.Printf("Dooble notice marked")
+							mark_notice(acct)
+						}
+						InfoLogger.Printf("%s marked notification in database", acct)
+					} else {
+						InfoLogger.Printf("%s their status is reply, not notified", acct)
 					}
-					InfoLogger.Printf("%s has been notified", acct)
 
-					mark_notice(acct)
-					InfoLogger.Printf("%s marked notification in database", acct)
 				}
 			}
 		}
