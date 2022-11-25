@@ -171,6 +171,9 @@ func RunBot() {
 								mID := mastodon.ID((args[2]))
 
 								switch args[1] {
+								case "boost":
+									c.Reblog(ctx, mID)
+									WarnLogger.Printf("%s was rebloged", mID)
 								case "unboost":
 									c.Unreblog(ctx, mID)
 									WarnLogger.Printf("%s was unrebloged", mID)
