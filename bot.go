@@ -29,6 +29,41 @@ type APobject struct {
 	InReplyTo *string `json:"inReplyTo"`
 }
 
+func CheckAPReply(tooturl string) (bool) {
+	var apobj APobject
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, tooturl, nil)
+	if err != nil {
+		ErrorLogger.Println("Failed http request status AP")
+		return false
+	}
+	req.Header.Set("Accept", "application/activity+json")
+	resp, err := client.Do(req)
+	if err != nil {
+		ErrorLogger.Println("get AP object")
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		ErrorLogger.Println(resp.Body)
+		ErrorLogger.Println("Failed AP object")
+		return false
+	}
+	err = json.NewDecoder(resp.Body).Decode(&apobj)
+	if err != nil {
+		ErrorLogger.Println("Failed decoding AP object")
+		return false
+	}
+	InfoLogger.Println(resp.Body)
+	if apobj.InReplyTo != nil {
+		InfoLogger.Println("AP object of status detected reply")
+		InfoLogger.Println(apobj.InReplyTo)
+		return true
+	}
+	return false
+}
+
 func RunBot() {
 	events, err := c.StreamingUser(ctx)
 	if err != nil {
@@ -43,7 +78,6 @@ func RunBot() {
 		}
 
 		notif := notifEvent.Notification
-		client := &http.Client{}
 
 		// New follower
 		if notif.Type == "follow" {
@@ -80,35 +114,14 @@ func RunBot() {
 			// Follow check
 			if relationship[0].FollowedBy {
 				if notif.Status.Visibility == "public" { // Reblog toot
+					var APreply bool
+					APreply = false
 					if notif.Status.InReplyToID == nil {
 						// Replies protection by get ActivityPub object 
 						// (if breaking threads)
-						var apobj APobject
-						req, err := http.NewRequest(http.MethodGet, tooturl, nil)
-						if err != nil {
-							ErrorLogger.Println("Failed http request status AP")
-						}
-						req.Header.Set("Accept", "application/activity+json")
-						resp, err := client.Do(req)
-						if err != nil {
-							ErrorLogger.Println("get AP object")
-						}
-					        defer resp.Body.Close()
-
-					        if resp.StatusCode != http.StatusOK {
-							ErrorLogger.Println("Failed AP object")
-						}
-						InfoLogger.Println(resp.Body)
-						err = json.NewDecoder(resp.Body).Decode(&apobj)
-						if err != nil {
-							ErrorLogger.Println("Failed decoding AP object")
-						}
-						if &apobj.InReplyTo != nil {
-							InfoLogger.Println("AP object of status detected reply")
-							notif.Status.InReplyToID = &apobj.InReplyTo
-						}
+						APreply = CheckAPReply(tooturl)
 					}
-					if notif.Status.InReplyToID == nil { // Not boost replies
+					if notif.Status.InReplyToID == nil && APreply == false { // Not boost replies
 						// Duplicate protection
 						content_hash := sha512.New()
 						content_hash.Write([]byte(content))
