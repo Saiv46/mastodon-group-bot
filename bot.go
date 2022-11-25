@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"net/http"
+	"encoding/json"
 
 	"github.com/mattn/go-mastodon"
 )
@@ -23,6 +25,10 @@ var (
 	my_account, _ = c.GetAccountCurrentUser(ctx)
 )
 
+type APobject struct {
+	InReplyTo *string `json:"inReplyTo"`
+}
+
 func RunBot() {
 	events, err := c.StreamingUser(ctx)
 	if err != nil {
@@ -37,6 +43,7 @@ func RunBot() {
 		}
 
 		notif := notifEvent.Notification
+		client := &http.Client{}
 
 		// New follower
 		if notif.Type == "follow" {
@@ -73,6 +80,34 @@ func RunBot() {
 			// Follow check
 			if relationship[0].FollowedBy {
 				if notif.Status.Visibility == "public" { // Reblog toot
+					if notif.Status.InReplyToID == nil {
+						// Replies protection by get ActivityPub object 
+						// (if breaking threads)
+						var apobj APobject
+						req, err := http.NewRequest(http.MethodGet, tooturl, nil)
+						if err != nil {
+							ErrorLogger.Println("Failed http request status AP")
+						}
+						req.Header.Set("Accept", "application/activity+json")
+						resp, err := client.Do(req)
+						if err != nil {
+							ErrorLogger.Println("get AP object")
+						}
+					        defer resp.Body.Close()
+
+					        if resp.StatusCode != http.StatusOK {
+							ErrorLogger.Println("Failed AP object")
+						}
+						InfoLogger.Println(resp.Body)
+						err = json.NewDecoder(resp.Body).Decode(&apobj)
+						if err != nil {
+							ErrorLogger.Println("Failed decoding AP object")
+						}
+						if &apobj.InReplyTo != nil {
+							InfoLogger.Println("AP object of status detected reply")
+							notif.Status.InReplyToID = &apobj.InReplyTo
+						}
+					}
 					if notif.Status.InReplyToID == nil { // Not boost replies
 						// Duplicate protection
 						content_hash := sha512.New()
