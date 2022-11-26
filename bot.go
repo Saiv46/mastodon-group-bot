@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"io"
 	"net/http"
 	"encoding/json"
+	"compress/gzip"
 
 	"github.com/mattn/go-mastodon"
 )
@@ -29,6 +31,9 @@ type APobject struct {
 	InReplyTo *string `json:"inReplyTo"`
 }
 
+//CheckAPReply return is reply bool of status
+//Note: Not working with servers when they required Authorized fetch
+//Note: By default false
 func CheckAPReply(tooturl string) (bool) {
 	var apobj APobject
 	client := &http.Client{}
@@ -40,25 +45,32 @@ func CheckAPReply(tooturl string) (bool) {
 	req.Header.Set("Accept", "application/activity+json")
 	resp, err := client.Do(req)
 	if err != nil {
-		ErrorLogger.Println("get AP object")
+		ErrorLogger.Printf("Server was not return AP object: %s", err)
 		return false
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		ErrorLogger.Println(resp.Body)
-		ErrorLogger.Println("Failed AP object")
+		ErrorLogger.Printf("AP get: Server was return %s http code %s", resp.StatusCode, resp.Body)
 		return false
 	}
-	err = json.NewDecoder(resp.Body).Decode(&apobj)
+	
+	var reader io.ReadCloser
+	switch resp.Header.Get("Content-Encoding") {
+	case "gzip":
+                reader, err = gzip.NewReader(resp.Body)
+                defer reader.Close()
+        default:
+                reader = resp.Body
+        }
+
+	err = json.NewDecoder(reader).Decode(&apobj)
 	if err != nil {
 		ErrorLogger.Println("Failed decoding AP object")
 		return false
 	}
-	InfoLogger.Println(resp.Body)
 	if apobj.InReplyTo != nil {
-		InfoLogger.Println("AP object of status detected reply")
-		InfoLogger.Println(apobj.InReplyTo)
+		WarnLogger.Printf("AP object of status detected reply: %s", apobj.InReplyTo)
 		return true
 	}
 	return false
