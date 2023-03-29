@@ -1,16 +1,16 @@
-# syntax=docker/dockerfile:1
-FROM golang:alpine
+# syntax=docker/dockerfile:1.4
+FROM golang:alpine as build
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 WORKDIR /app
 COPY *.go ./
-COPY config.json ./config.example.json
-RUN go mod init mastodon-group-bot
-RUN go mod tidy
-RUN go build -o /mastodon-group-bot
+RUN go mod init mastodon-group-bot && \
+  go mod tidy && \
+  go build -o mastodon-group-bot
 
+FROM scratch
 WORKDIR /
 COPY --chmod=+x entrypoint.sh ./
-RUN rm -rf /app
-
+COPY --from=build /app/mastodon-group-bot ./
 VOLUME ["/data"]
 ENTRYPOINT ["/entrypoint.sh"]
 CMD [ "-config", "/data/config.json", "-db", "/data/limits.db" ]
