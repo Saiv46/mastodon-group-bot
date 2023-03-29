@@ -7,7 +7,7 @@ RUN go mod init mastodon-group-bot && \
   go mod tidy && \
   go build -o mastodon-group-bot
 
-FROM scratch
+FROM alpine:latest
 WORKDIR /
 COPY --chmod=+x entrypoint.sh ./
 COPY --from=build /app/mastodon-group-bot ./
